@@ -106,7 +106,9 @@ case class ProtoStoredAsConverter() extends ProtoConverter {
   }
 
   private def replaceBackQuote(replaceString: String) = {
-    replaceString.replace(BACK_QUOTE, StringUtils.EMPTY)
+    if( replaceString.startsWith(BACK_QUOTE) && replaceString.endsWith(BACK_QUOTE) )
+      replaceString.replace(BACK_QUOTE, StringUtils.EMPTY)
+    else replaceString
   }
 
   private def getDescriptor(message: String, protoPath: String, protoFiles: util.Collection[String]): Descriptors.Descriptor = {
