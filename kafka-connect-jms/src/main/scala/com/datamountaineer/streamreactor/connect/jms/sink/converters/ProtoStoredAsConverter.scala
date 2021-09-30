@@ -42,7 +42,8 @@ case class ProtoStoredAsConverter() extends ProtoConverter {
   override def convert(record: SinkRecord, setting: JMSSetting): Array[Byte] = {
     val properties: util.Map[String, String] = mapAsJavaMap(setting.storedAsProperties)
     val storedAs = replaceBackQuote(setting.storedAs)
-    val protoPath: String = properties.getOrDefault(SCHEMA_PROTO_PATH, defaultProtoPath)
+    val storedas_proto_path: String = properties.getOrDefault(SCHEMA_PROTO_PATH, defaultProtoPath)
+    val protoPath: String = replaceBackQuote(storedas_proto_path)
     val storedas_proto_file = properties.get(SCHEMA_PROTO_FILE)
     val protoFile: String = getProtoFile(storedas_proto_file)
 
@@ -106,7 +107,7 @@ case class ProtoStoredAsConverter() extends ProtoConverter {
   }
 
   private def replaceBackQuote(replaceString: String) = {
-    if( replaceString.startsWith(BACK_QUOTE) && replaceString.endsWith(BACK_QUOTE) )
+    if(!StringUtils.isEmpty(replaceString) && replaceString.contains(BACK_QUOTE))
       replaceString.replace(BACK_QUOTE, StringUtils.EMPTY)
     else replaceString
   }
