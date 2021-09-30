@@ -56,12 +56,23 @@ trait TestBase extends AnyWordSpec with Matchers with MockitoSugar {
   val JMS_URL_1 = "tcp://localhost:61621"
   val AVRO_QUEUE = "avro_queue"
   val QUEUE_CONVERTER = s"`com.datamountaineer.streamreactor.connect.converters.source.AvroConverter`"
+  val QUEUE_CONVERTER_JMS = s"`com.datamountaineer.streamreactor.connect.jms.sink.converters.AvroMessageConverter`"
+  val FORMAT = "AVRO"
+  val SUBSCRIPTION_NAME = "subscriptionName"
   val AVRO_FILE = getSchemaFile()
 
 
   def getAvroProp(topic: String) = s"${topic}=${AVRO_FILE}"
   def getKCQL(target: String, source: String, jmsType: String) = s"INSERT INTO $target SELECT * FROM $source WITHTYPE $jmsType"
-  def getKCQLAvroSource(topic: String, queue: String, jmsType: String) = s"INSERT INTO $topic SELECT * FROM $queue WITHTYPE $jmsType WITHCONVERTER=$QUEUE_CONVERTER"
+  def getKCQLAvroSinkConverter(target: String, source: String, jmsType: String) = s"INSERT INTO $target SELECT * FROM $source WITHTYPE $jmsType WITHCONVERTER=$QUEUE_CONVERTER_JMS"
+
+  def getKCQLFormat(target: String, source: String, jmsType: String, format: String) = s"INSERT INTO $target SELECT * FROM $source WITHFORMAT $format WITHTYPE $jmsType"
+  def getKCQLStoreAsAddressedPerson(target: String, source: String, jmsType: String) = s"INSERT INTO $target SELECT col1,col2 FROM $source  STOREAS `com.datamountaineer.streamreactor.example.AddressedPerson`(param1 = value1 , param2 = value2,param3=value3)' WITHTYPE $jmsType"
+  def getKCQLEmptyStoredAsNonAddressedPerson(target: String, source: String, jmsType: String) = s"INSERT INTO $target SELECT col1,col2 FROM $source STOREAS `com.datamountaineer.streamreactor.example.NonAddressedPerson`(param1 = value1 , param2 = value2,param3=value3)  WITHTYPE $jmsType"
+  def getKCQLStoreAs(target: String, source: String, jmsType: String, path: String) = s"INSERT INTO $target SELECT col1,col2 FROM $source STOREAS `com.datamountaineer.streamreactor.example.AddressedPerson`(proto_path = $path, proto_file = `$path/AddressedPerson.proto`) WITHTYPE $jmsType"
+  def getKCQLStoredAsWithNameOnly(target: String, source: String, jmsType: String) = s"INSERT INTO $target SELECT col1,col2 FROM $source STOREAS `com.datamountaineer.streamreactor.example.NonAddressedPersonOuterClass`(param1 = value1)  WITHTYPE $jmsType"
+  def getKCQLStoredAsWithInvalidData(target: String, source: String, jmsType: String) = s"INSERT INTO $target SELECT col1,col2 FROM $source STOREAS NonAddressedPersonOuterClass  WITHTYPE $jmsType"
+  def getKCQLAvroSource(topic: String, queue: String, jmsType: String) = s"INSERT INTO $topic SELECT * FROM $queue WITHTYPE $jmsType WITHCONVERTER=$QUEUE_CONVERTER WITHSUBSCRIPTION=$SUBSCRIPTION_NAME"
 
   def getSchemaFile(): String = {
     val schemaFile = Paths.get(UUID.randomUUID().toString)
@@ -123,11 +134,25 @@ trait TestBase extends AnyWordSpec with Matchers with MockitoSugar {
       .put("mapNonStringKeys", Map(1 -> 1).asJava)
   }
 
+  def getProtobufSchema: Schema = {
+    SchemaBuilder.struct
+      .field("name", Schema.STRING_SCHEMA)
+      .field("id", Schema.INT32_SCHEMA)
+      .field("email", Schema.STRING_SCHEMA)
+      .build()
+  }
+
+  def getProtobufStruct(schema: Schema, name: String, id: Int, email:String): Struct = {
+    new Struct(schema)
+      .put("name", name)
+      .put("id", id)
+      .put("email", email)
+  }
+
   def getSinkRecords(topic: String) = {
     List(new SinkRecord(topic, 0, null, null, getSchema, getStruct(getSchema), 1),
       new SinkRecord(topic, 0, null, null, getSchema, getStruct(getSchema), 5))
   }
-
 
   def getTextMessages(n: Int, session: Session): Seq[TextMessage] = {
     (1 to n).map(i => session.createTextMessage(s"Message $i"))

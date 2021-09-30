@@ -20,6 +20,8 @@ package com.datamountaineer.streamreactor.connect.jms.config
 
 import com.datamountaineer.streamreactor.connect.converters.source.AvroConverter
 import com.datamountaineer.streamreactor.connect.jms
+import com.datamountaineer.streamreactor.connect.jms.sink.converters.{AvroMessageConverter, MapMessageConverter}
+import com.datamountaineer.streamreactor.connect.jms.source.converters.{CommonJMSMessageConverter, JMSStructMessageConverter}
 import com.datamountaineer.streamreactor.connect.jms.{JMSSessionProvider, TestBase}
 import org.apache.kafka.common.config.ConfigException
 import org.scalatest.BeforeAndAfterAll
@@ -44,7 +46,7 @@ class JMSSettingsTest extends TestBase with BeforeAndAfterAll {
     val setting = settings.settings.head
     setting.source shouldBe queueName
     setting.target shouldBe kafkaTopic1
-    setting.sourceConverters shouldBe None
+    setting.sourceConverter.getClass shouldBe new JMSStructMessageConverter().getClass
     setting.destinationType shouldBe QueueDestination
     setting.messageSelector shouldBe None
     settings.connectionURL shouldBe JMS_URL
@@ -60,7 +62,7 @@ class JMSSettingsTest extends TestBase with BeforeAndAfterAll {
     val setting = settings.settings.head
     setting.source shouldBe topicName
     setting.target shouldBe kafkaTopic1
-    setting.sourceConverters shouldBe None
+    setting.sourceConverter.getClass shouldBe new JMSStructMessageConverter().getClass
     setting.destinationType shouldBe TopicDestination
     setting.messageSelector shouldBe None
     settings.connectionURL shouldBe JMS_URL
@@ -76,72 +78,82 @@ class JMSSettingsTest extends TestBase with BeforeAndAfterAll {
     val setting = settings.settings.head
     setting.source shouldBe topicName
     setting.target shouldBe kafkaTopic1
-    setting.sourceConverters shouldBe None
+    setting.sourceConverter.getClass shouldBe new JMSStructMessageConverter().getClass
     setting.destinationType shouldBe TopicDestination
     setting.messageSelector shouldBe None
     settings.destinationSelector shouldBe DestinationSelector.JNDI
     settings.connectionURL shouldBe JMS_URL
   }
 
-  "should create a JMSSettings for a source with only 1 topic, 1 queue and JNDI for a source" in {
+  "should create a JMSSettings for a source with only 1 topic, 1 queue and JNDI for a source with subscriptionName" in {
     val kafkaTopic1 = s"kafka-${UUID.randomUUID().toString}"
     val topicName = s"queue-${UUID.randomUUID().toString}"
     val queueName = s"topic-${UUID.randomUUID().toString}"
+    val subscription = "subscriptionName"
 
     val kcqlQ = getKCQL(kafkaTopic1, queueName, "QUEUE")
     val kcqlT = getKCQL(kafkaTopic1, topicName, "TOPIC")
-    val props = getProps(s"$kcqlQ;$kcqlT", JMS_URL) ++ Map(JMSConfigConstants.DESTINATION_SELECTOR -> DestinationSelector.JNDI.toString)
+    val props = getProps(s"$kcqlQ;$kcqlT", JMS_URL) ++
+      Map(JMSConfigConstants.DESTINATION_SELECTOR -> DestinationSelector.JNDI.toString) ++
+      Map(JMSConfigConstants.TOPIC_SUBSCRIPTION_NAME  -> "subscriptionName")
     val config = JMSConfig(props.asJava)
     val settings = JMSSettings(config, false)
     val queue = settings.settings.head
 
     queue.source shouldBe queueName
     queue.target shouldBe kafkaTopic1
-    queue.sourceConverters shouldBe None
+    queue.sourceConverter.getClass shouldBe new JMSStructMessageConverter().getClass
     queue.destinationType shouldBe QueueDestination
+    queue.subscriptionName.get shouldBe subscription
     queue.messageSelector shouldBe None
 
     val topic = settings.settings.last
     topic.source shouldBe topicName
     topic.target shouldBe kafkaTopic1
-    topic.sourceConverters shouldBe None
+    topic.sourceConverter.getClass shouldBe new JMSStructMessageConverter().getClass
     topic.destinationType shouldBe TopicDestination
+    topic.subscriptionName.get shouldBe subscription
     topic.messageSelector shouldBe None
 
     settings.destinationSelector shouldBe DestinationSelector.JNDI
     settings.connectionURL shouldBe JMS_URL
   }
 
-  "should create a JMSSettings for a source with only 1 topic, 1 queue and JNDI and converters for a source" in {
+  "should create a JMSSettings for a source with only 1 topic, 1 queue and JNDI and converters for a source with subscription" in {
     val kafkaTopic1 = s"kafka-${UUID.randomUUID().toString}"
     val topicName = UUID.randomUUID().toString
     val queueName = UUID.randomUUID().toString
+    val subscription = "subscriptionName"
 
     val kcqlQ = getKCQLAvroSource(kafkaTopic1, queueName, "QUEUE")
-    val kcqlT = getKCQL(kafkaTopic1, topicName, "TOPIC")
-    val props = getProps(s"$kcqlQ;$kcqlT", JMS_URL) ++ Map(AvroConverter.SCHEMA_CONFIG -> getAvroProp(queueName))
+    val kcqlT = getKCQLAvroSource(kafkaTopic1, topicName, "TOPIC")
+    val props = getProps(s"$kcqlQ;$kcqlT", JMS_URL) ++
+      Map(AvroConverter.SCHEMA_CONFIG -> getAvroProp(queueName)) ++
+      Map(JMSConfigConstants.DEFAULT_SOURCE_CONVERTER_CONFIG -> "com.datamountaineer.streamreactor.connect.converters.source.AvroConverter")
     val config = JMSConfig(props.asJava)
 
     val settings = JMSSettings(config, false)
     val queue = settings.settings.head
     queue.source shouldBe queueName
     queue.target shouldBe kafkaTopic1
-    queue.sourceConverters.get.isInstanceOf[AvroConverter] shouldBe true
+    queue.sourceConverter.getClass shouldBe new CommonJMSMessageConverter(new AvroConverter()).getClass
     queue.destinationType shouldBe QueueDestination
     queue.messageSelector shouldBe None
+    queue.subscriptionName.get shouldBe subscription
 
     val topic = settings.settings.last
     topic.source shouldBe topicName
     topic.target shouldBe kafkaTopic1
     topic.destinationType shouldBe TopicDestination
-    topic.sourceConverters.getOrElse(None) shouldBe None
+    topic.sourceConverter.getClass shouldBe new CommonJMSMessageConverter(new AvroConverter()).getClass
     topic.messageSelector shouldBe None
+    topic.subscriptionName.get shouldBe subscription
 
     settings.destinationSelector shouldBe DestinationSelector.CDI
     settings.connectionURL shouldBe JMS_URL
   }
 
-  "should create a JMSSettings for a sink with only 1 topic, 1 queue and JNDI and converters for a sink" in {
+  "should create a JMSSettings for a sink with only 1 topic, 1 queue and JNDI" in {
     val kafkaTopic1 = s"kafka-${UUID.randomUUID().toString}"
     val topicName = UUID.randomUUID().toString
     val queueName = UUID.randomUUID().toString
@@ -155,7 +167,132 @@ class JMSSettingsTest extends TestBase with BeforeAndAfterAll {
     val queue = settings.settings.head
     queue.source shouldBe queueName
     queue.target shouldBe kafkaTopic1
-    queue.sourceConverters shouldBe None
+    queue.sourceConverter.getClass shouldBe new JMSStructMessageConverter().getClass
+    queue.messageSelector shouldBe None
+
+    val topic = settings.settings.last
+    topic.source shouldBe topicName
+    topic.target shouldBe kafkaTopic1
+    topic.destinationType shouldBe TopicDestination
+    topic.messageSelector shouldBe None
+
+    settings.destinationSelector shouldBe DestinationSelector.CDI
+    settings.connectionURL shouldBe JMS_URL
+  }
+
+  "should create a JMSSettings for a sink with only 1 topic, 1 queue and JNDI and converters for a sink in kcql" in {
+    val kafkaTopic1 = s"kafka-${UUID.randomUUID().toString}"
+    val converter =  new AvroMessageConverter().getClass
+    val topicName = UUID.randomUUID().toString
+    val queueName = UUID.randomUUID().toString
+
+    val kcqlQ = getKCQLAvroSinkConverter(kafkaTopic1, queueName, "QUEUE")
+    val kcqlT = getKCQLAvroSinkConverter(kafkaTopic1, topicName, "TOPIC")
+    val props = getProps(s"$kcqlQ;$kcqlT", JMS_URL)
+
+    val config = JMSConfig(props.asJava)
+    val settings = JMSSettings(config, true)
+    val queue = settings.settings.head
+    queue.source shouldBe queueName
+    queue.target shouldBe kafkaTopic1
+    queue.sourceConverter.getClass shouldBe new JMSStructMessageConverter().getClass
+    queue.sinkConverter.getClass shouldBe converter
+    queue.messageSelector shouldBe None
+
+    val topic = settings.settings.last
+    topic.source shouldBe topicName
+    topic.target shouldBe kafkaTopic1
+    topic.destinationType shouldBe TopicDestination
+    topic.messageSelector shouldBe None
+
+    settings.destinationSelector shouldBe DestinationSelector.CDI
+    settings.connectionURL shouldBe JMS_URL
+  }
+
+  "should create a JMSSettings for a sink with only 1 topic, 1 queue and JNDI and format for a sink in kcql" in {
+    val kafkaTopic1 = s"kafka-${UUID.randomUUID().toString}"
+    val converter =  new MapMessageConverter().getClass
+    val topicName = UUID.randomUUID().toString
+    val queueName = UUID.randomUUID().toString
+
+    val kcqlQ = getKCQLFormat(kafkaTopic1, queueName, "QUEUE", "MAP")
+    val kcqlT = getKCQLFormat(kafkaTopic1, topicName, "TOPIC", "MAP")
+    val props = getProps(s"$kcqlQ;$kcqlT", JMS_URL)
+    val config = JMSConfig(props.asJava)
+    val settings = JMSSettings(config, true)
+    val queue = settings.settings.head
+    queue.source shouldBe queueName
+    queue.target shouldBe kafkaTopic1
+    queue.sourceConverter.getClass shouldBe new JMSStructMessageConverter().getClass
+    queue.sinkConverter.getClass shouldBe converter
+
+    queue.messageSelector shouldBe None
+
+    val topic = settings.settings.last
+    topic.source shouldBe topicName
+    topic.target shouldBe kafkaTopic1
+    topic.destinationType shouldBe TopicDestination
+    topic.messageSelector shouldBe None
+
+    settings.destinationSelector shouldBe DestinationSelector.CDI
+    settings.connectionURL shouldBe JMS_URL
+  }
+
+  "should create a JMSSettings for a sink with only 1 topic, 1 queue and JNDI and storeAs for a sink in kcql" in {
+    val kafkaTopic1 = s"kafka-${UUID.randomUUID().toString}"
+    val topicName = UUID.randomUUID().toString
+    val queueName = UUID.randomUUID().toString
+
+    val kcqlQ = getKCQLStoreAsAddressedPerson(kafkaTopic1, queueName, "QUEUE")
+    val kcqlT = getKCQLEmptyStoredAsNonAddressedPerson(kafkaTopic1, topicName, "TOPIC")
+    val props = getProps(s"$kcqlQ;$kcqlT", JMS_URL)
+    val config = JMSConfig(props.asJava)
+    val settings = JMSSettings(config, true)
+    val queue = settings.settings.head
+    queue.source shouldBe queueName
+    queue.target shouldBe kafkaTopic1
+    queue.sourceConverter.getClass shouldBe new JMSStructMessageConverter().getClass
+    queue.storedAs shouldBe "`com.datamountaineer.streamreactor.example.AddressedPerson`"
+    queue.storedAsProperties.size shouldBe 3
+    queue.storedAsProperties.get("param1") shouldBe Some("value1")
+    queue.storedAsProperties.get("param2") shouldBe Some("value2")
+    queue.storedAsProperties.get("param3") shouldBe Some("value3")
+
+    queue.messageSelector shouldBe None
+
+    val topic = settings.settings.last
+    topic.source shouldBe topicName
+    topic.target shouldBe kafkaTopic1
+    topic.destinationType shouldBe TopicDestination
+    topic.messageSelector shouldBe None
+    topic.storedAs shouldBe "`com.datamountaineer.streamreactor.example.NonAddressedPerson`"
+    topic.storedAsProperties.size shouldBe 3
+    topic.storedAsProperties.get("param1") shouldBe Some("value1")
+    topic.storedAsProperties.get("param2") shouldBe Some("value2")
+    topic.storedAsProperties.get("param3") shouldBe Some("value3")
+
+    settings.destinationSelector shouldBe DestinationSelector.CDI
+    settings.connectionURL shouldBe JMS_URL
+  }
+
+  "should create a JMSSettings for a sink with only 1 topic, 1 queue and JNDI and converters for a sink in a connector" in {
+    val kafkaTopic1 = s"kafka-${UUID.randomUUID().toString}"
+    val converter =  new AvroMessageConverter().getClass
+    val topicName = UUID.randomUUID().toString
+    val queueName = UUID.randomUUID().toString
+
+    val kcqlQ = getKCQL(kafkaTopic1, queueName, "QUEUE")
+    val kcqlT = getKCQL(kafkaTopic1, topicName, "TOPIC")
+    val props = getProps(s"$kcqlQ;$kcqlT", JMS_URL) ++
+      Map(JMSConfigConstants.DEFAULT_SINK_CONVERTER_CONFIG  -> "com.datamountaineer.streamreactor.connect.jms.sink.converters.AvroMessageConverter")
+
+    val config = JMSConfig(props.asJava)
+    val settings = JMSSettings(config, true)
+    val queue = settings.settings.head
+    queue.source shouldBe queueName
+    queue.target shouldBe kafkaTopic1
+    queue.sourceConverter.getClass shouldBe new JMSStructMessageConverter().getClass
+    queue.sinkConverter.getClass shouldBe converter
     queue.messageSelector shouldBe None
 
     val topic = settings.settings.last
@@ -180,7 +317,7 @@ class JMSSettingsTest extends TestBase with BeforeAndAfterAll {
     val topic = settings.settings.head
     topic.source shouldBe topicName
     topic.target shouldBe kafkaTopic1
-    topic.sourceConverters shouldBe None
+    topic.sourceConverter.getClass shouldBe new JMSStructMessageConverter().getClass
     topic.destinationType shouldBe TopicDestination
     topic.messageSelector shouldBe Some(MESSAGE_SELECTOR)
 

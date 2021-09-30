@@ -31,4 +31,5 @@ trait Converter {
 
 object Converter {
   val TopicKey = "topic"
+  val CONNECT_SOURCE_CONVERTER_PREFIX = "connect.source.converter"
 }
