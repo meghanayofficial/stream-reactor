@@ -252,12 +252,8 @@ class JMSSettingsTest extends TestBase with BeforeAndAfterAll {
     queue.source shouldBe queueName
     queue.target shouldBe kafkaTopic1
     queue.sourceConverter.getClass shouldBe new JMSStructMessageConverter().getClass
-    queue.storedAs shouldBe "`com.datamountaineer.streamreactor.example.AddressedPerson`"
-    queue.storedAsProperties.size shouldBe 3
-    queue.storedAsProperties.get("param1") shouldBe Some("value1")
-    queue.storedAsProperties.get("param2") shouldBe Some("value2")
-    queue.storedAsProperties.get("param3") shouldBe Some("value3")
-
+    queue.storedAs shouldBe "`datamountaineer.streamreactor.example.AddressedPerson`"
+    queue.storedAsProperties.size shouldBe 0
     queue.messageSelector shouldBe None
 
     val topic = settings.settings.last
@@ -265,11 +261,9 @@ class JMSSettingsTest extends TestBase with BeforeAndAfterAll {
     topic.target shouldBe kafkaTopic1
     topic.destinationType shouldBe TopicDestination
     topic.messageSelector shouldBe None
-    topic.storedAs shouldBe "`com.datamountaineer.streamreactor.example.NonAddressedPerson`"
-    topic.storedAsProperties.size shouldBe 3
-    topic.storedAsProperties.get("param1") shouldBe Some("value1")
-    topic.storedAsProperties.get("param2") shouldBe Some("value2")
-    topic.storedAsProperties.get("param3") shouldBe Some("value3")
+    topic.storedAs shouldBe "`datamountaineer.streamreactor.example.NonAddressedPerson`"
+    topic.storedAsProperties.size shouldBe 0
+
 
     settings.destinationSelector shouldBe DestinationSelector.CDI
     settings.connectionURL shouldBe JMS_URL
@@ -328,14 +322,14 @@ class JMSSettingsTest extends TestBase with BeforeAndAfterAll {
   "should throw an exception if the type is not provided" in {
     val kcql = s"INSERT INTO x SELECT * FROM y"
     val props =
-    Map(JMSConfigConstants.KCQL -> kcql,
-      JMSConfigConstants.JMS_USER -> JMS_USER,
-      JMSConfigConstants.JMS_PASSWORD -> JMS_PASSWORD,
-      JMSConfigConstants.INITIAL_CONTEXT_FACTORY -> INITIAL_CONTEXT_FACTORY,
-      JMSConfigConstants.CONNECTION_FACTORY -> CONNECTION_FACTORY,
-      JMSConfigConstants.JMS_URL -> JMS_URL,
-      JMSConfigConstants.DESTINATION_SELECTOR -> DestinationSelector.JNDI.toString
-    ).asJava
+      Map(JMSConfigConstants.KCQL -> kcql,
+        JMSConfigConstants.JMS_USER -> JMS_USER,
+        JMSConfigConstants.JMS_PASSWORD -> JMS_PASSWORD,
+        JMSConfigConstants.INITIAL_CONTEXT_FACTORY -> INITIAL_CONTEXT_FACTORY,
+        JMSConfigConstants.CONNECTION_FACTORY -> CONNECTION_FACTORY,
+        JMSConfigConstants.JMS_URL -> JMS_URL,
+        JMSConfigConstants.DESTINATION_SELECTOR -> DestinationSelector.JNDI.toString
+      ).asJava
     val config = jms.config.JMSConfig(props)
     intercept[ConfigException] {
       JMSSettings(config, false)
@@ -345,13 +339,13 @@ class JMSSettingsTest extends TestBase with BeforeAndAfterAll {
   "throw an exception if the config is specifying a wrong connection factory for a sink" in {
     val kcql = getKCQL("topic", "queue", "QUEUE")
     val props =
-    Map(JMSConfigConstants.KCQL -> kcql,
-      JMSConfigConstants.JMS_USER -> JMS_USER,
-      JMSConfigConstants.JMS_PASSWORD -> JMS_PASSWORD,
-      JMSConfigConstants.INITIAL_CONTEXT_FACTORY -> INITIAL_CONTEXT_FACTORY,
-      JMSConfigConstants.CONNECTION_FACTORY -> "plop",
-      JMSConfigConstants.JMS_URL -> JMS_URL
-    ).asJava
+      Map(JMSConfigConstants.KCQL -> kcql,
+        JMSConfigConstants.JMS_USER -> JMS_USER,
+        JMSConfigConstants.JMS_PASSWORD -> JMS_PASSWORD,
+        JMSConfigConstants.INITIAL_CONTEXT_FACTORY -> INITIAL_CONTEXT_FACTORY,
+        JMSConfigConstants.CONNECTION_FACTORY -> "plop",
+        JMSConfigConstants.JMS_URL -> JMS_URL
+      ).asJava
     val config = jms.config.JMSConfig(props)
     val settings = JMSSettings(config, true)
     intercept[javax.naming.NameNotFoundException] {

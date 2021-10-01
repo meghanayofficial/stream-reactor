@@ -39,9 +39,9 @@ import javax.jms.{BytesMessage, Connection, Session, TextMessage}
 import scala.collection.JavaConverters._
 
 /**
-  * Created by andrew@datamountaineer.com on 14/03/2017. 
-  * stream-reactor
-  */
+ * Created by andrew@datamountaineer.com on 14/03/2017.
+ * stream-reactor
+ */
 case class Student(name: String, age: Int, note: Double)
 
 
@@ -67,10 +67,10 @@ trait TestBase extends AnyWordSpec with Matchers with MockitoSugar {
   def getKCQLAvroSinkConverter(target: String, source: String, jmsType: String) = s"INSERT INTO $target SELECT * FROM $source WITHTYPE $jmsType WITHCONVERTER=$QUEUE_CONVERTER_JMS"
 
   def getKCQLFormat(target: String, source: String, jmsType: String, format: String) = s"INSERT INTO $target SELECT * FROM $source WITHFORMAT $format WITHTYPE $jmsType"
-  def getKCQLStoreAsAddressedPerson(target: String, source: String, jmsType: String) = s"INSERT INTO $target SELECT col1,col2 FROM $source  STOREAS `com.datamountaineer.streamreactor.example.AddressedPerson`(param1 = value1 , param2 = value2,param3=value3)' WITHTYPE $jmsType"
-  def getKCQLEmptyStoredAsNonAddressedPerson(target: String, source: String, jmsType: String) = s"INSERT INTO $target SELECT col1,col2 FROM $source STOREAS `com.datamountaineer.streamreactor.example.NonAddressedPerson`(param1 = value1 , param2 = value2,param3=value3)  WITHTYPE $jmsType"
-  def getKCQLStoreAs(target: String, source: String, jmsType: String, path: String) = s"INSERT INTO $target SELECT col1,col2 FROM $source STOREAS `com.datamountaineer.streamreactor.example.AddressedPerson`(proto_path = $path, proto_file = `$path/AddressedPerson.proto`) WITHTYPE $jmsType"
-  def getKCQLStoredAsWithNameOnly(target: String, source: String, jmsType: String) = s"INSERT INTO $target SELECT col1,col2 FROM $source STOREAS `com.datamountaineer.streamreactor.example.NonAddressedPersonOuterClass`(param1 = value1)  WITHTYPE $jmsType"
+  def getKCQLStoreAsAddressedPerson(target: String, source: String, jmsType: String) = s"INSERT INTO $target SELECT * FROM $source  STOREAS `datamountaineer.streamreactor.example.AddressedPerson` WITHTYPE $jmsType"
+  def getKCQLEmptyStoredAsNonAddressedPerson(target: String, source: String, jmsType: String) = s"INSERT INTO $target SELECT * FROM $source STOREAS `datamountaineer.streamreactor.example.NonAddressedPerson` WITHTYPE $jmsType"
+  def getKCQLStoreAs(target: String, source: String, jmsType: String, path: String) = s"INSERT INTO $target SELECT col1,col2 FROM $source STOREAS `datamountaineer.streamreactor.example.NonAddressedPerson`(proto_path = $path, proto_file = `$path/NonAddressedPerson.proto`) WITHTYPE $jmsType"
+  def getKCQLStoredAsWithNameOnly(target: String, source: String, jmsType: String) = s"INSERT INTO $target SELECT * FROM $source STOREAS `com.datamountaineer.streamreactor.example.NonAddressedPersonOuterClass`  WITHTYPE $jmsType"
   def getKCQLStoredAsWithInvalidData(target: String, source: String, jmsType: String) = s"INSERT INTO $target SELECT col1,col2 FROM $source STOREAS NonAddressedPersonOuterClass  WITHTYPE $jmsType"
   def getKCQLAvroSource(topic: String, queue: String, jmsType: String) = s"INSERT INTO $topic SELECT * FROM $queue WITHTYPE $jmsType WITHCONVERTER=$QUEUE_CONVERTER WITHSUBSCRIPTION=$SUBSCRIPTION_NAME"
 

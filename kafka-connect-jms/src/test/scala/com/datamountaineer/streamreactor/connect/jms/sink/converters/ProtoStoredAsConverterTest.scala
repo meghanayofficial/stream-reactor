@@ -36,14 +36,13 @@ class ProtoStoredAsConverterTest extends AnyWordSpec with Matchers with Using wi
 
     val kafkaTopic1 = s"kafka-${UUID.randomUUID().toString}"
     val queueName = UUID.randomUUID().toString
-    val path = getClass.getClassLoader.getResource("proto/AddressedPerson.proto").getPath
-      .replace("/AddressedPerson.proto", "")
+    val path = getClass.getClassLoader.getResource("proto/NonAddressedPerson.proto").getPath
+      .replace("/NonAddressedPerson.proto", "")
 
     val kcql = getKCQLStoreAs(queueName, kafkaTopic1, "QUEUE", path)
-    val props = getProps(kcql, JMS_URL) ++
-      Map("connect.sink.converter.proto_path" -> path)
+    val props = getProps(kcql, JMS_URL)
     val schema = getProtobufSchema
-    val struct = getProtobufStruct(schema, "addressed-person", 101, "addressed-person@gmail.com")
+    val struct = getProtobufStruct(schema, "non-addressed-person", 101, "non-addressed-person@gmail.com")
     val config = JMSConfig(props.asJava)
     val settings = JMSSettings(config, true)
     val setting = settings.settings.head
@@ -57,11 +56,11 @@ class ProtoStoredAsConverterTest extends AnyWordSpec with Matchers with Using wi
 
     Option(stringValue).isDefined shouldBe true
     stringValue.contains("name") shouldBe true
-    stringValue.contains("addressed-person") shouldBe true
+    stringValue.contains("non-addressed-person") shouldBe true
     stringValue.contains("id") shouldBe true
     stringValue.contains("101") shouldBe true
     stringValue.contains("email") shouldBe true
-    stringValue.contains("addressed-person@gmail.com") shouldBe true
+    stringValue.contains("non-addressed-person@gmail.com") shouldBe true
 
   }
 
