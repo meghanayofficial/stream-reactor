@@ -64,7 +64,7 @@ class ProtoStoredAsConverterTest extends AnyWordSpec with Matchers with Using wi
 
   }
 
-  "create a BytesMessage with sinkrecord payload with connector config properties" in {
+  "create a BytesMessage with sinkrecord payload with connector config proto path properties" in {
     val converter = ProtoStoredAsConverter()
 
     val kafkaTopic1 = s"kafka-${UUID.randomUUID().toString}"
@@ -79,7 +79,7 @@ class ProtoStoredAsConverterTest extends AnyWordSpec with Matchers with Using wi
     val schema = getProtobufSchema
     val struct = getProtobufStruct(schema, "non-addrressed-person", 102, "non-addressed-person@gmail.com")
     val config = JMSConfig(props.asJava)
-    val settings = JMSSettings(config, true)
+    val settings = JMSSettings(config, sink = true)
     val setting = settings.settings.head
 
     converter.initialize(props.asJava)
@@ -108,7 +108,7 @@ class ProtoStoredAsConverterTest extends AnyWordSpec with Matchers with Using wi
     val schema = getProtobufSchema
     val struct = getProtobufStruct(schema, "addrressed-person", 103, "addressed-person@gmail.com")
     val config = JMSConfig(props.asJava)
-    val settings = JMSSettings(config, true)
+    val settings = JMSSettings(config, sink = true)
     val setting = settings.settings.head
 
     converter.initialize(props.asJava)
@@ -138,6 +138,59 @@ class ProtoStoredAsConverterTest extends AnyWordSpec with Matchers with Using wi
     val schema = getProtobufSchema
     val struct = getProtobufStruct(schema, "addrressed-person", 103, "addressed-person@gmail.com")
     val config = JMSConfig(props.asJava)
+    val settings = JMSSettings(config, sink = true)
+    val setting = settings.settings.head
+
+    converter.initialize(props.asJava)
+    val record = new SinkRecord(kafkaTopic1, 0, null, null, schema, struct, 1)
+
+    try {
+      converter.convert(record, setting)
+    } catch {
+      case x: DataException =>
+        assert(x.getMessage == "Invalid storedAs settings: NonAddressedPersonOuterClass")
+    }
+
+  }
+
+  "should throw exception for invalid package name for storedAs when protopath is present" in {
+    val converter = ProtoStoredAsConverter()
+
+    val kafkaTopic1 = s"kafka-${UUID.randomUUID().toString}"
+    val queueName = UUID.randomUUID().toString
+    val path = getClass.getClassLoader.getResource("proto/NonAddressedPerson.proto").getPath
+      .replace("/NonAddressedPerson.proto", "")
+    val kcql = getKCQLStoredAsWithInvalidPackageNameWithProtopath(queueName, kafkaTopic1, "QUEUE", path)
+    val props = getProps(kcql, JMS_URL)
+    val schema = getProtobufSchema
+    val struct = getProtobufStruct(schema, "addrressed-person", 103, "addressed-person@gmail.com")
+    val config = JMSConfig(props.asJava)
+    val settings = JMSSettings(config, sink = true)
+    val setting = settings.settings.head
+
+    converter.initialize(props.asJava)
+    val record = new SinkRecord(kafkaTopic1, 0, null, null, schema, struct, 1)
+
+    try {
+      converter.convert(record, setting)
+    } catch {
+      case x: DataException =>
+        assert(x.getMessage == "Invalid storedAs settings: Proto file package name doesn't match with storedAs package name")
+    }
+
+  }
+
+  "should throw exception for valid package name for storedAs but invalid protopath which has no files in it" in {
+    val converter = ProtoStoredAsConverter()
+
+    val kafkaTopic1 = s"kafka-${UUID.randomUUID().toString}"
+    val queueName = UUID.randomUUID().toString
+
+    val kcql = getKCQLStoredAsWithProtopath(queueName, kafkaTopic1, "QUEUE", "/resources/path")
+    val props = getProps(kcql, JMS_URL)
+    val schema = getProtobufSchema
+    val struct = getProtobufStruct(schema, "addrressed-person", 103, "addressed-person@gmail.com")
+    val config = JMSConfig(props.asJava)
     val settings = JMSSettings(config, true)
     val setting = settings.settings.head
 
@@ -147,9 +200,37 @@ class ProtoStoredAsConverterTest extends AnyWordSpec with Matchers with Using wi
     try {
       converter.convert(record, setting)
     } catch {
-      case x: DataException => {
-        assert(x.getMessage == "Invalid storedAs settings: NonAddressedPersonOuterClass")
-      }
+      case x: DataException =>
+        println(x.getMessage)
+        assert(x.getMessage == "Invalid storedAs settings: /resources/path")
+    }
+
+  }
+
+  "should throw exception for for incorrect proto file name" in {
+    val converter = ProtoStoredAsConverter()
+
+    val kafkaTopic1 = s"kafka-${UUID.randomUUID().toString}"
+    val queueName = UUID.randomUUID().toString
+    val path = getClass.getClassLoader.getResource("proto/NonAddressedPerson.proto").getPath
+      .replace("/NonAddressedPerson.proto", "")
+    val kcql = getKCQLStoreAsWithFileAndPath(queueName, kafkaTopic1, "QUEUE", "`NonExisting.proto`",path)
+    val props = getProps(kcql, JMS_URL)
+    val schema = getProtobufSchema
+    val struct = getProtobufStruct(schema, "addrressed-person", 103, "addressed-person@gmail.com")
+    val config = JMSConfig(props.asJava)
+    val settings = JMSSettings(config, sink = true)
+    val setting = settings.settings.head
+
+    converter.initialize(props.asJava)
+    val record = new SinkRecord(kafkaTopic1, 0, null, null, schema, struct, 1)
+
+    try {
+      converter.convert(record, setting)
+    } catch {
+      case x: DataException =>
+        println(x.getMessage)
+        assert(x.getMessage == "Invalid storedAs settings: File descriptor name doesn't match with protofile")
     }
 
   }

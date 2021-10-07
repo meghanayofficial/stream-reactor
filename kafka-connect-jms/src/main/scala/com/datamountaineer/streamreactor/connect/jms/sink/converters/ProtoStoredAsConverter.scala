@@ -4,6 +4,7 @@ import com.datamountaineer.streamreactor.connect.jms.config.JMSSetting
 import com.github.os72.protocjar.Protoc
 import com.google.protobuf.util.JsonFormat
 import com.google.protobuf.{DescriptorProtos, Descriptors, DynamicMessage}
+import com.typesafe.scalalogging.StrictLogging
 import org.apache.commons.lang.StringUtils
 import org.apache.kafka.connect.errors.DataException
 import org.apache.kafka.connect.json.JsonConverter
@@ -19,7 +20,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.stream.Collectors
 import scala.collection.JavaConverters._
 
-case class ProtoStoredAsConverter() extends ProtoConverter {
+case class ProtoStoredAsConverter() extends ProtoConverter with StrictLogging{
 
   private val SCHEMA_PROTO_PATH = "proto_path"
   private val SCHEMA_PROTO_FILE = "proto_file"
@@ -46,30 +47,38 @@ case class ProtoStoredAsConverter() extends ProtoConverter {
     val protoPath: String = replaceBackQuote(storedas_proto_path)
     val storedas_proto_file = properties.get(SCHEMA_PROTO_FILE)
     val protoFile: String = getProtoFile(storedas_proto_file)
+    println("protoPath: " + protoPath + " **** " + "protoFile: " + protoFile + " **** " + "storedAs: " + storedAs)
 
     //Cache the descriptor lookup so not doing reflection on every record.
     val descriptor = descriptors.computeIfAbsent(storedAs, (name: String) => {
-      try if (protoPath != null) {
-        if (protoFile != null) {
-          getDescriptor(name, protoPath, protoFile)
+      try if (!StringUtils.isEmpty(protoPath)) {
+          println("first If")
+          if (!StringUtils.isEmpty(protoFile)) {
+            println("second If")
+            getDescriptor(name, protoPath, protoFile)
+          } else {
+            println("first Else")
+            println("basePath:"+ Paths.get(protoPath))
+            val basePath = Paths.get(protoPath)
+            val protoFiles: util.Collection[String] = Files.find(basePath, Integer.MAX_VALUE, (filePath: Path, fileAttr: BasicFileAttributes) => fileAttr.isRegularFile)
+              .map[Path](file => file.getFileName)
+              .map[String](_.toString)
+              .collect(Collectors.toList[String])
+            getDescriptor(name, protoPath, protoFiles)
+          }
         } else {
-          val basePath = Paths.get(protoPath)
-          val protoFiles: util.Collection[String] = Files.find(basePath, Integer.MAX_VALUE, (filePath: Path, fileAttr: BasicFileAttributes) => fileAttr.isRegularFile)
-            .map[Path](file => file.getFileName)
-            .map[String](_.toString)
-            .collect(Collectors.toList[String])
-          getDescriptor(name, protoPath, protoFiles)
+          println("Second Else name: " + name)
+          val specificProtobufClass = Class.forName(name)
+
+          val parseMethod = if (specificProtobufClass != null) specificProtobufClass.getDeclaredMethod("getDescriptor")
+          else throw new DataException("Invalid storedAs classpath name: " + name)
+          parseMethod.invoke(null)
+            .asInstanceOf[Descriptors.FileDescriptor]
+            .getMessageTypes
+            .stream
+            .findFirst
+            .get
         }
-      } else {
-        val specificProtobufClass = Class.forName(name)
-        val parseMethod = specificProtobufClass.getDeclaredMethod("getDescriptor")
-        parseMethod.invoke(null)
-          .asInstanceOf[Descriptors.FileDescriptor]
-          .getMessageTypes
-          .stream
-          .findFirst
-          .get
-      }
       catch {
         case x: Exception =>
           throw new DataException("Invalid storedAs settings: " + x.getMessage)
@@ -107,21 +116,32 @@ case class ProtoStoredAsConverter() extends ProtoConverter {
   }
 
   private def replaceBackQuote(replaceString: String) = {
-    if(!StringUtils.isEmpty(replaceString) && replaceString.contains(BACK_QUOTE))
+
+    val value = if (StringUtils.isEmpty(replaceString)) {
+      StringUtils.EMPTY
+    } else if (replaceString.contains(BACK_QUOTE))
       replaceString.replace(BACK_QUOTE, StringUtils.EMPTY)
     else replaceString
+
+    println("Replaced backquote value= "+ value)
+    value
   }
 
   private def getDescriptor(message: String, protoPath: String, protoFiles: util.Collection[String]): Descriptors.Descriptor = {
+    println("protoPath: " + protoPath + " **** " + "protoFiles: " + protoFiles + " **** ")
 
     protoFiles.forEach(protoFile => {
+      println("first else protoPath: " + protoPath + " **** " + "protoFile: " + protoFile + " **** " + "Message: " + message)
+
       val descriptor = getDescriptor(message: String, protoPath: String, protoFile: String)
-      if (descriptor != null) return descriptor
+        if (descriptor != null) return descriptor
     })
-    null
+    throw new DataException("Proto file package name doesn't match with storedAs package name")
   }
 
   private def getDescriptor(message: String, protoPath: String, protoFile: String): Descriptors.Descriptor = try {
+    println("protoPath: " + protoPath + " **** " + "protoFile: " + protoFile + " **** " + "message: " + message)
+
     val descFile: File = generateDescFile(protoPath, protoFile)
     val fileDescriptorSet = DescriptorProtos.FileDescriptorSet.parseFrom(new FileInputStream(descFile.getAbsolutePath))
     val fileDescriptorProto = fileDescriptorSet.getFileList.stream.
@@ -132,16 +152,21 @@ case class ProtoStoredAsConverter() extends ProtoConverter {
     if (fileDescriptorProto != null) {
       val fileDescriptor = buildFileDescriptor(fileDescriptorProto, fileDescriptorSet)
 
+      fileDescriptor.getMessageTypes.forEach(mt => println("Fullname: " + mt.getFullName))
+      println("ProtoStoredAsConverter fileDescriptorSet: " + fileDescriptorSet.getFileList)
+      println("ProtoStoredAsConverter fileDescriptorProto: " + fileDescriptorProto)
       val descriptor = fileDescriptor.getMessageTypes.stream
         .filter((pointerDescriptor: Descriptors.Descriptor) => pointerDescriptor.getFullName == message)
         .findFirst
         .orElse(null)
 
+      println("descriptor: " + descriptor)
       descriptor
     }
-    else null
+    else throw new DataException("File descriptor name doesn't match with protofile")
   } catch {
-    case _: IOException | _: InterruptedException =>
+    case x @ (_ : IOException | _ : InterruptedException) =>
+      logger.error("Unexpected error", x.getMessage)
       null
   }
 

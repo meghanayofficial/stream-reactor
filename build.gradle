@@ -161,6 +161,7 @@ allprojects {
         compile "com.typesafe.scala-logging:scala-logging_${scalaMajorVersion}:${scalaLoggingVersion}"
         compile "org.apache.kafka:connect-json:$kafkaVersion"
         compile "io.confluent:kafka-connect-avro-converter:$confluentVersion"
+        compile "io.confluent:kafka-connect-protobuf-converter:$confluentVersion"
         compile ("io.confluent:kafka-schema-registry:$confluentVersion") {
             exclude group: 'com.google.guava', module: 'guava'
         }

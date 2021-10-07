@@ -70,8 +70,11 @@ trait TestBase extends AnyWordSpec with Matchers with MockitoSugar {
   def getKCQLStoreAsAddressedPerson(target: String, source: String, jmsType: String) = s"INSERT INTO $target SELECT * FROM $source  STOREAS `datamountaineer.streamreactor.example.AddressedPerson` WITHTYPE $jmsType"
   def getKCQLEmptyStoredAsNonAddressedPerson(target: String, source: String, jmsType: String) = s"INSERT INTO $target SELECT * FROM $source STOREAS `datamountaineer.streamreactor.example.NonAddressedPerson` WITHTYPE $jmsType"
   def getKCQLStoreAs(target: String, source: String, jmsType: String, path: String) = s"INSERT INTO $target SELECT col1,col2 FROM $source STOREAS `datamountaineer.streamreactor.example.NonAddressedPerson`(proto_path = $path, proto_file = `$path/NonAddressedPerson.proto`) WITHTYPE $jmsType"
+  def getKCQLStoreAsWithFileAndPath(target: String, source: String, jmsType: String, file: String, path: String) = s"INSERT INTO $target SELECT col1,col2 FROM $source STOREAS `datamountaineer.streamreactor.example.NonAddressedPerson`(proto_path = $path, proto_file = $file) WITHTYPE $jmsType"
   def getKCQLStoredAsWithNameOnly(target: String, source: String, jmsType: String) = s"INSERT INTO $target SELECT * FROM $source STOREAS `com.datamountaineer.streamreactor.example.NonAddressedPersonOuterClass`  WITHTYPE $jmsType"
   def getKCQLStoredAsWithInvalidData(target: String, source: String, jmsType: String) = s"INSERT INTO $target SELECT col1,col2 FROM $source STOREAS NonAddressedPersonOuterClass  WITHTYPE $jmsType"
+  def getKCQLStoredAsWithInvalidPackageNameWithProtopath(target: String, source: String, jmsType: String, path: String) = s"INSERT INTO $target SELECT col1,col2 FROM $source STOREAS NonAddressedPersonOuterClass(proto_path = $path)  WITHTYPE $jmsType"
+  def getKCQLStoredAsWithProtopath(target: String, source: String, jmsType: String, path: String) = s"INSERT INTO $target SELECT col1,col2 FROM $source STOREAS `datamountaineer.streamreactor.example.alien.AlienPerson`(proto_path = $path)  WITHTYPE $jmsType"
   def getKCQLAvroSource(topic: String, queue: String, jmsType: String) = s"INSERT INTO $topic SELECT * FROM $queue WITHTYPE $jmsType WITHCONVERTER=$QUEUE_CONVERTER WITHSUBSCRIPTION=$SUBSCRIPTION_NAME"
 
   def getSchemaFile(): String = {
