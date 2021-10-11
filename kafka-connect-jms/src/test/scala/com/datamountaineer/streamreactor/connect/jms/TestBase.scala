@@ -70,7 +70,7 @@ trait TestBase extends AnyWordSpec with Matchers with MockitoSugar {
   def getKCQLFormat(target: String, source: String, jmsType: String, format: String) = s"INSERT INTO $target SELECT * FROM $source WITHFORMAT $format WITHTYPE $jmsType"
   def getKCQLStoreAsAddressedPerson(target: String, source: String, jmsType: String) = s"INSERT INTO $target SELECT * FROM $source  STOREAS `datamountaineer.streamreactor.example.AddressedPerson` WITHTYPE $jmsType"
   def getKCQLEmptyStoredAsNonAddressedPerson(target: String, source: String, jmsType: String) = s"INSERT INTO $target SELECT * FROM $source STOREAS `datamountaineer.streamreactor.example.NonAddressedPerson` WITHTYPE $jmsType"
-  def getKCQLStoreAs(target: String, source: String, jmsType: String, path: String) = s"INSERT INTO $target SELECT * FROM $source STOREAS `datamountaineer.streamreactor.example.NonAddressedPerson`(proto_path = $path, proto_file = `$path/NonAddressedPerson.proto`) WITHTYPE $jmsType WITHFORMAT $PROTO_FORMAT"
+  def getKCQLStoreAsTimedPerson(target: String, source: String, jmsType: String, path: String) = s"INSERT INTO $target SELECT * FROM $source STOREAS `datamountaineer.streamreactor.example.TimedPerson`(proto_path = $path, proto_file = `$path/TimedPerson.proto`) WITHTYPE $jmsType WITHFORMAT $PROTO_FORMAT"
   def getKCQLStoreAsWithFileAndPath(target: String, source: String, jmsType: String, file: String, path: String) = s"INSERT INTO $target SELECT col1,col2 FROM $source STOREAS `datamountaineer.streamreactor.example.NonAddressedPerson`(proto_path = $path, proto_file = $file) WITHTYPE $jmsType"
   def getKCQLStoredAsWithNameOnly(target: String, source: String, jmsType: String) = s"INSERT INTO $target SELECT * FROM $source STOREAS `com.datamountaineer.streamreactor.example.NonAddressedPersonOuterClass`  WITHTYPE $jmsType"
   def getKCQLStoredAsWithInvalidData(target: String, source: String, jmsType: String) = s"INSERT INTO $target SELECT col1,col2 FROM $source STOREAS NonAddressedPersonOuterClass  WITHTYPE $jmsType"
@@ -151,6 +151,21 @@ trait TestBase extends AnyWordSpec with Matchers with MockitoSugar {
       .put("name", name)
       .put("id", id)
       .put("email", email)
+  }
+
+  def getProtobufSchemaTimestamp: Schema = {
+    SchemaBuilder.struct
+      .field("name", Schema.STRING_SCHEMA)
+      .field("id", Schema.INT32_SCHEMA)
+      .field("timestamp", Schema.STRING_SCHEMA)
+      .build()
+  }
+
+  def getProtobufStructTimestamp(schema: Schema, name: String, id: Int, timeStamp:String): Struct = {
+    new Struct(schema)
+      .put("name", name)
+      .put("id", id)
+      .put("timestamp", timeStamp)
   }
 
   def getSinkRecords(topic: String) = {

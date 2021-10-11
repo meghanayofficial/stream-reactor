@@ -96,11 +96,13 @@ case class ProtoStoredAsConverter() extends ProtoConverter with StrictLogging{
       .get("payload")
       .toString
 
-    JsonFormat.parser.ignoringUnknownFields.merge(jsonPayload, b)
+    JsonFormat.parser
+      .ignoringUnknownFields
+      .merge(jsonPayload, b)
 
-    b.build
-      .toString
-      .getBytes
+    JsonFormat.printer
+      .print(b)
+    .getBytes()
   }
 
   private def getProtoFile(storedas_proto_file: String) = {

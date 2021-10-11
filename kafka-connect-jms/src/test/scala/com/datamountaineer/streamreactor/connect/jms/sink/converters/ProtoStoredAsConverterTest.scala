@@ -39,10 +39,10 @@ class ProtoStoredAsConverterTest extends AnyWordSpec with Matchers with Using wi
     val path = getClass.getClassLoader.getResource("proto/NonAddressedPerson.proto").getPath
       .replace("/NonAddressedPerson.proto", "")
 
-    val kcql = getKCQLStoreAs(queueName, kafkaTopic1, "QUEUE", path)
+    val kcql = getKCQLStoreAsTimedPerson(queueName, kafkaTopic1, "QUEUE", path)
     val props = getProps(kcql, JMS_URL)
-    val schema = getProtobufSchema
-    val struct = getProtobufStruct(schema, "non-addressed-person", 101, "non-addressed-person@gmail.com")
+    val schema = getProtobufSchemaTimestamp
+    val struct = getProtobufStructTimestamp(schema, "non-addressed-person", 101, "1970-01-01T00:00:00Z")
     val config = JMSConfig(props.asJava)
     val settings = JMSSettings(config, true)
     val setting = settings.settings.head
@@ -59,8 +59,8 @@ class ProtoStoredAsConverterTest extends AnyWordSpec with Matchers with Using wi
     stringValue.contains("non-addressed-person") shouldBe true
     stringValue.contains("id") shouldBe true
     stringValue.contains("101") shouldBe true
-    stringValue.contains("email") shouldBe true
-    stringValue.contains("non-addressed-person@gmail.com") shouldBe true
+    stringValue.contains("timestamp") shouldBe true
+    stringValue.contains("1970-01-01T00:00:00Z") shouldBe true
 
   }
 
@@ -88,7 +88,6 @@ class ProtoStoredAsConverterTest extends AnyWordSpec with Matchers with Using wi
     val convertedValue: Array[Byte] = converter.convert(record, setting)
 
     val stringValue = convertedValue.map(_.toChar).mkString
-    println("stringValue: " + stringValue)
     Option(stringValue).isDefined shouldBe true
     stringValue.contains("name") shouldBe true
     stringValue.contains("non-addressed-person@gmail.com") shouldBe true
@@ -234,5 +233,4 @@ class ProtoStoredAsConverterTest extends AnyWordSpec with Matchers with Using wi
     }
 
   }
-
 }
