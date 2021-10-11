@@ -27,15 +27,13 @@ import org.apache.activemq.ActiveMQConnectionFactory
 import org.apache.activemq.broker.BrokerService
 import org.apache.kafka.common.record.TimestampType
 import org.apache.kafka.connect.data.Schema
-import org.apache.kafka.connect.header.{ConnectHeaders, Header}
+import org.apache.kafka.connect.header.ConnectHeaders
 import org.apache.kafka.connect.json.JsonDeserializer
 import org.apache.kafka.connect.sink.SinkRecord
 import org.scalatest.{BeforeAndAfter, BeforeAndAfterAll}
-import org.apache.kafka.common.header.internals.RecordHeader
+
 import java.io.File
-import java.util
-import java.util.Arrays.asList
-import java.util.{LinkedList, UUID}
+import java.util.UUID
 import javax.jms.{Message, MessageListener, Session, TextMessage}
 import scala.reflect.io.Path
 
@@ -75,7 +73,7 @@ class JMSWriterTest extends TestBase with Using with BeforeAndAfter with Convert
     val headers = new ConnectHeaders
     headers.add("customGroupId", "1111", Schema.STRING_SCHEMA)
     val record1 = new SinkRecord(kafkaTopic1, 0, null, null, schema, struct, 1, null, TimestampType.NO_TIMESTAMP_TYPE, headers)
-    val record2 = new SinkRecord(kafkaTopic2, 0, null, null, schema, struct, 5,null, TimestampType.NO_TIMESTAMP_TYPE, headers)
+    val record2 = new SinkRecord(kafkaTopic2, 0, null, null, schema, struct, 5, null, TimestampType.NO_TIMESTAMP_TYPE, headers)
 
     val connectionFactory = new ActiveMQConnectionFactory()
     connectionFactory.setBrokerURL(brokerUrl)

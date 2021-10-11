@@ -20,7 +20,7 @@ package com.datamountaineer.streamreactor.connect.jms.config
 
 import com.datamountaineer.streamreactor.connect.converters.source.AvroConverter
 import com.datamountaineer.streamreactor.connect.jms
-import com.datamountaineer.streamreactor.connect.jms.sink.converters.{AvroMessageConverter, MapMessageConverter}
+import com.datamountaineer.streamreactor.connect.jms.sink.converters.{AvroMessageConverter, ProtoMessageConverter}
 import com.datamountaineer.streamreactor.connect.jms.source.converters.{CommonJMSMessageConverter, JMSStructMessageConverter}
 import com.datamountaineer.streamreactor.connect.jms.{JMSSessionProvider, TestBase}
 import org.apache.kafka.common.config.ConfigException
@@ -182,7 +182,7 @@ class JMSSettingsTest extends TestBase with BeforeAndAfterAll {
 
   "should create a JMSSettings for a sink with only 1 topic, 1 queue and JNDI and converters for a sink in kcql" in {
     val kafkaTopic1 = s"kafka-${UUID.randomUUID().toString}"
-    val converter =  new AvroMessageConverter().getClass
+    val converter =  new ProtoMessageConverter().getClass
     val topicName = UUID.randomUUID().toString
     val queueName = UUID.randomUUID().toString
 
@@ -211,12 +211,12 @@ class JMSSettingsTest extends TestBase with BeforeAndAfterAll {
 
   "should create a JMSSettings for a sink with only 1 topic, 1 queue and JNDI and format for a sink in kcql" in {
     val kafkaTopic1 = s"kafka-${UUID.randomUUID().toString}"
-    val converter =  new MapMessageConverter().getClass
+    val converter =  new ProtoMessageConverter().getClass
     val topicName = UUID.randomUUID().toString
     val queueName = UUID.randomUUID().toString
 
-    val kcqlQ = getKCQLFormat(kafkaTopic1, queueName, "QUEUE", "MAP")
-    val kcqlT = getKCQLFormat(kafkaTopic1, topicName, "TOPIC", "MAP")
+    val kcqlQ = getKCQLFormat(kafkaTopic1, queueName, "QUEUE", "PROTOBUF")
+    val kcqlT = getKCQLFormat(kafkaTopic1, topicName, "TOPIC", "PROTOBUF")
     val props = getProps(s"$kcqlQ;$kcqlT", JMS_URL)
     val config = JMSConfig(props.asJava)
     val settings = JMSSettings(config, true)

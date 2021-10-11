@@ -110,7 +110,6 @@ object JMSSettings extends StrictLogging {
           converter
       }
     }
-
     val defaultSinkConverterClassName = config.getString(JMSConfigConstants.DEFAULT_SINK_CONVERTER_CONFIG)
 
     val defaultSinkConverter = Option(defaultSinkConverterClassName)

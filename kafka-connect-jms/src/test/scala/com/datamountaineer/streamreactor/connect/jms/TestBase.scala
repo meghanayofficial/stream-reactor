@@ -56,8 +56,9 @@ trait TestBase extends AnyWordSpec with Matchers with MockitoSugar {
   val JMS_URL_1 = "tcp://localhost:61621"
   val AVRO_QUEUE = "avro_queue"
   val QUEUE_CONVERTER = s"`com.datamountaineer.streamreactor.connect.converters.source.AvroConverter`"
-  val QUEUE_CONVERTER_JMS = s"`com.datamountaineer.streamreactor.connect.jms.sink.converters.AvroMessageConverter`"
+  val QUEUE_CONVERTER_JMS = s"`com.datamountaineer.streamreactor.connect.jms.sink.converters.ProtoMessageConverter`"
   val FORMAT = "AVRO"
+  val PROTO_FORMAT = "PROTOBUF"
   val SUBSCRIPTION_NAME = "subscriptionName"
   val AVRO_FILE = getSchemaFile()
 
@@ -69,7 +70,7 @@ trait TestBase extends AnyWordSpec with Matchers with MockitoSugar {
   def getKCQLFormat(target: String, source: String, jmsType: String, format: String) = s"INSERT INTO $target SELECT * FROM $source WITHFORMAT $format WITHTYPE $jmsType"
   def getKCQLStoreAsAddressedPerson(target: String, source: String, jmsType: String) = s"INSERT INTO $target SELECT * FROM $source  STOREAS `datamountaineer.streamreactor.example.AddressedPerson` WITHTYPE $jmsType"
   def getKCQLEmptyStoredAsNonAddressedPerson(target: String, source: String, jmsType: String) = s"INSERT INTO $target SELECT * FROM $source STOREAS `datamountaineer.streamreactor.example.NonAddressedPerson` WITHTYPE $jmsType"
-  def getKCQLStoreAs(target: String, source: String, jmsType: String, path: String) = s"INSERT INTO $target SELECT col1,col2 FROM $source STOREAS `datamountaineer.streamreactor.example.NonAddressedPerson`(proto_path = $path, proto_file = `$path/NonAddressedPerson.proto`) WITHTYPE $jmsType"
+  def getKCQLStoreAs(target: String, source: String, jmsType: String, path: String) = s"INSERT INTO $target SELECT * FROM $source STOREAS `datamountaineer.streamreactor.example.NonAddressedPerson`(proto_path = $path, proto_file = `$path/NonAddressedPerson.proto`) WITHTYPE $jmsType WITHFORMAT $PROTO_FORMAT"
   def getKCQLStoreAsWithFileAndPath(target: String, source: String, jmsType: String, file: String, path: String) = s"INSERT INTO $target SELECT col1,col2 FROM $source STOREAS `datamountaineer.streamreactor.example.NonAddressedPerson`(proto_path = $path, proto_file = $file) WITHTYPE $jmsType"
   def getKCQLStoredAsWithNameOnly(target: String, source: String, jmsType: String) = s"INSERT INTO $target SELECT * FROM $source STOREAS `com.datamountaineer.streamreactor.example.NonAddressedPersonOuterClass`  WITHTYPE $jmsType"
   def getKCQLStoredAsWithInvalidData(target: String, source: String, jmsType: String) = s"INSERT INTO $target SELECT col1,col2 FROM $source STOREAS NonAddressedPersonOuterClass  WITHTYPE $jmsType"
