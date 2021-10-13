@@ -1,5 +1,6 @@
 package com.datamountaineer.streamreactor.connect.jms.sink.converters
 
+import com.datamountaineer.streamreactor.common.converters.ParserImpl
 import com.datamountaineer.streamreactor.connect.jms.config.JMSSetting
 import com.github.os72.protocjar.Protoc
 import com.google.protobuf.util.JsonFormat
@@ -43,11 +44,13 @@ case class ProtoStoredAsConverter() extends ProtoConverter with StrictLogging{
   override def convert(record: SinkRecord, setting: JMSSetting): Array[Byte] = {
     val properties: util.Map[String, String] = mapAsJavaMap(setting.storedAsProperties)
     val storedAs = replaceBackQuote(setting.storedAs)
+    logger.info(s"storedAs:  $storedAs")
     val storedas_proto_path: String = properties.getOrDefault(SCHEMA_PROTO_PATH, defaultProtoPath)
     val protoPath: String = replaceBackQuote(storedas_proto_path)
+    logger.info(s"protoPath:  $protoPath")
     val storedas_proto_file = properties.get(SCHEMA_PROTO_FILE)
     val protoFile: String = getProtoFile(storedas_proto_file)
-
+    logger.info(s"protoFile:  $protoFile")
     //Cache the descriptor lookup so not doing reflection on every record.
     val descriptor = descriptors.computeIfAbsent(storedAs, (name: String) => {
       try if (!StringUtils.isEmpty(protoPath)) {
@@ -63,7 +66,7 @@ case class ProtoStoredAsConverter() extends ProtoConverter with StrictLogging{
           }
         } else {
           val specificProtobufClass = Class.forName(name)
-
+          logger.info(s"Class loaded is: $specificProtobufClass")
           val parseMethod = if (specificProtobufClass != null) specificProtobufClass.getDeclaredMethod("getDescriptor")
           else throw new DataException("Invalid storedAs classpath name: " + name)
           parseMethod.invoke(null)
@@ -96,8 +99,9 @@ case class ProtoStoredAsConverter() extends ProtoConverter with StrictLogging{
       .get("payload")
       .toString
 
-    JsonFormat.parser
-      .ignoringUnknownFields
+    logger.info(s"jsonPayload to be be parsed is: $jsonPayload")
+
+    new ParserImpl()
       .merge(jsonPayload, b)
 
     JsonFormat.printer
@@ -127,7 +131,6 @@ case class ProtoStoredAsConverter() extends ProtoConverter with StrictLogging{
 
   private def getDescriptor(message: String, protoPath: String, protoFiles: util.Collection[String]): Descriptors.Descriptor = {
     protoFiles.forEach(protoFile => {
-
       val descriptor = getDescriptor(message: String, protoPath: String, protoFile: String)
         if (descriptor != null) return descriptor
     })
@@ -149,9 +152,10 @@ case class ProtoStoredAsConverter() extends ProtoConverter with StrictLogging{
         .findFirst
         .orElse(null)
 
+      logger.info(s"Descriptor value is $descriptor")
       descriptor
     }
-    else throw new DataException("File descriptor name doesn't match with protofile")
+    else throw new DataException("File descriptor name doesn't match with proto file name")
   } catch {
     case x @ (_ : IOException | _ : InterruptedException) =>
       logger.error("Unexpected error", x.getMessage)

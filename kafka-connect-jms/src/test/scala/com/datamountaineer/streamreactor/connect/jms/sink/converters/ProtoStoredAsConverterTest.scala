@@ -229,7 +229,7 @@ class ProtoStoredAsConverterTest extends AnyWordSpec with Matchers with Using wi
     } catch {
       case x: DataException =>
         println(x.getMessage)
-        assert(x.getMessage == "Invalid storedAs settings: File descriptor name doesn't match with protofile")
+        assert(x.getMessage == "Invalid storedAs settings: File descriptor name doesn't match with proto file name")
     }
 
   }
